@@ -29,9 +29,46 @@ def natural_gradient(params):
         np.ndarray: The natural gradient evaluated at the input parameters, of dimension 6
     """
 
-    natural_grad = np.zeros(6)
-
     # QHACK #
+    def get_state(params):
+        """ Get the state before a measurement """
+        qnode(params)
+        return dev.state
+
+    # Calculate the unshifted state (its conjugate transpose)
+    state_unshifted = np.conjugate(get_state(params)).T
+
+    def shift_vector(i):
+        vector = np.zeros(6)
+        vector[i] = 1
+        return vector
+
+    metric_tensor = np.zeros((6, 6))
+    
+    for i in range(6):
+        for j in range(i + 1):
+            
+            state_shifted_1 = get_state(params + (shift_vector(i) + shift_vector(j)) * np.pi/2)
+            state_shifted_2 = get_state(params + (shift_vector(i) - shift_vector(j)) * np.pi/2)
+            state_shifted_3 = get_state(params + (-shift_vector(i) + shift_vector(j)) * np.pi/2)
+            state_shifted_4 = get_state(params - (shift_vector(i) + shift_vector(j)) * np.pi/2)
+
+            metric_tensor[i, j] = (
+                - np.abs(np.dot(state_unshifted, state_shifted_1))**2
+                + np.abs(np.dot(state_unshifted, state_shifted_2))**2
+                + np.abs(np.dot(state_unshifted, state_shifted_3))**2
+                - np.abs(np.dot(state_unshifted, state_shifted_4))**2
+            ) / 8
+
+            if i != j:
+                metric_tensor[j, i] = metric_tensor[i, j]
+
+    grad = qml.grad(qnode)
+    gradient = grad(params)[0]
+
+    metric_tensor_inv = np.linalg.inv(metric_tensor)
+
+    natural_grad = np.dot(metric_tensor_inv, gradient)
 
     # QHACK #
 
