@@ -23,11 +23,19 @@ def simple_circuits_30(angle):
     # QHACK #
 
     # Step 1 : initialize a device
+    dev = qml.device("default.qubit", wires=1)
 
     # Step 2 : Create a quantum circuit and qnode
+    @qml.qnode(dev)
+    def circuit(rotation_angle):
+        """ Defines a Pennylane circuit on a single qubit with a parameterized Y rotation
+            and a measurement in the X-basis.
+        """
+        qml.RY(rotation_angle, wires=0)
+        return qml.expval(qml.PauliX(0))
 
     # Step 3 : Run the qnode
-    # x_expectation = ?
+    x_expectation = circuit(angle)
 
     # QHACK #
     return x_expectation
