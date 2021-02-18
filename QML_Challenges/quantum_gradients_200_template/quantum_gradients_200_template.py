@@ -46,7 +46,54 @@ def gradient_200(weights, dev):
     hessian = np.zeros([5, 5], dtype=np.float64)
 
     # QHACK #
+    shift_value = np.pi/4
 
+    def parameter_shift_term(circuit, weights, i):
+        shifted = weights.copy()
+        shifted[i] += shift_value * 2
+        forward = circuit(shifted)  # forward evaluation
+
+        shifted[i] -= 2 * shift_value * 2
+        backward = circuit(shifted) # backward evaluation
+
+        return 0.5 * (forward - backward) / np.sin(shift_value*2), forward, backward
+    
+    forwards = np.zeros(5)
+    backwards = np.zeros(5)
+    for i in range(5):
+        gradient[i], forwards[i], backwards[i] = parameter_shift_term(circuit, weights, i)
+    
+    def shift_vector(i):
+        vector = np.zeros(5)
+        vector[i] = 1
+        return vector
+    
+    circuit_unshifted = circuit(weights)
+    
+    def evaluate_circuit(shifts):
+        if np.any(shifts != 0) and np.all(shifts != 2*np.pi):
+            return circuit(weights + shifts)
+        return circuit_unshifted
+  
+    for i in range(5):
+        for j in range(i+1):
+            i_shift = shift_value * shift_vector(i)
+            j_shift = shift_value * shift_vector(j)
+
+            if i == j:
+                hessian[i, i] = 0.25 * (
+                    forwards[i] + backwards[i] - 2 * circuit_unshifted
+                ) / np.sin(shift_value)**2
+
+            else:
+                hessian[i, j] = 0.25 * (
+                    evaluate_circuit(i_shift + j_shift)
+                    - evaluate_circuit(i_shift - j_shift)
+                    - evaluate_circuit(-i_shift + j_shift)
+                    + evaluate_circuit(-i_shift - j_shift)
+                ) / np.sin(shift_value)**2
+            
+                hessian[j, i] = hessian[i, j]
     # QHACK #
 
     return gradient, hessian, circuit.diff_options["method"]
