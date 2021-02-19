@@ -62,10 +62,11 @@ def run_vqe(H):
 
     # Set up an optimizer
     #opt = qml.QNGOptimizer(0.01, diag_approx=False, lam=0.001)
-    opt = qml.GradientDescentOptimizer(0.8)
+    #opt = qml.GradientDescentOptimizer(0.8)
+    opt = qml.QNGOptimizer(0.1, diag_approx=False, lam=0.001)
 
     # Run the VQE by iterating over many steps of the optimizer
-    max_iterations = 50
+    max_iterations = 30
     conv_tol = 1e-09
 
     energies = []
