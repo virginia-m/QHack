@@ -21,6 +21,26 @@ def variational_ansatz(params, wires):
     """
 
     # QHACK #
+    num_qubits = len(wires)
+
+    # Prepare the state |psi> = |10000..0>
+    qml.PauliX(wires=0)
+    
+    # Apply the F gates
+    for i, param in enumerate(params):
+        qml.RY(-param, wires=i+1)
+        qml.CZ(wires=[i+1, i])
+        qml.RY(param, wires=i+1)
+        
+    # Apply the reversed CNOTS
+    for i in range(len(params)):
+        qml.Hadamard(wires=i)
+        qml.Hadamard(wires=i+1)
+
+        qml.CNOT(wires=[i, i+1])
+
+        qml.Hadamard(wires=i)
+        qml.Hadamard(wires=i+1)
 
     # QHACK #
 
@@ -40,16 +60,35 @@ def run_vqe(H):
     energy = 0
 
     # QHACK #
+    num_qubits = len(H.wires)
 
     # Initialize the quantum device
+    dev = qml.device("default.qubit", wires=num_qubits)
 
     # Randomly choose initial parameters (how many do you need?)
+    params = np.random.uniform(0, np.pi, size=(num_qubits-1))
 
     # Set up a cost function
+    cost_fn = qml.ExpvalCost(variational_ansatz, H, dev)
 
     # Set up an optimizer
+    opt = qml.GradientDescentOptimizer(0.02)
 
     # Run the VQE by iterating over many steps of the optimizer
+    max_iterations = 500
+    conv_tol = 1e-09
+
+    energies = []
+
+    for n in range(max_iterations):
+        params, prev_energy = opt.step_and_cost(cost_fn, params)
+        energies.append(cost_fn(params))
+        conv = np.abs(energies[-1] - prev_energy)
+
+        if conv <= conv_tol:
+            break
+
+    energy = energies[-1]
 
     # QHACK #
 
