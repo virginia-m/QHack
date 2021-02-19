@@ -70,6 +70,28 @@ def run_vqe(H):
     # (We recommend ~500 iterations to ensure convergence for this problem,
     # or you can design your own convergence criteria)
 
+    dev = qml.device("default.qubit", wires=num_qubits)
+    
+    cost_fn = qml.ExpvalCost(variational_ansatz, H, dev)
+    
+    max_iterations = 500
+    conv_tol = 1e-09
+    
+    #opt = qml.GradientDescentOptimizer(0.08)
+    opt = qml.QNGOptimizer(0.01, diag_approx=False, lam=0.001)
+    
+    energies = []
+
+    for n in range(max_iterations):
+        params, prev_energy = opt.step_and_cost(cost_fn, params)
+        energies.append(cost_fn(params))
+        conv = np.abs(energies[-1] - prev_energy)
+
+        if conv <= conv_tol:
+            break
+
+    energy = energies[-1]
+
     # QHACK #
 
     # Return the ground state energy
